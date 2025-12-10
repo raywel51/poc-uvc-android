@@ -1,57 +1,37 @@
-package digital.raywel.uvucamera
+package digital.raywel.uvucamera.ui.activity
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ImageFormat
-import android.graphics.Rect
 import android.graphics.SurfaceTexture
-import android.graphics.YuvImage
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Bundle
-import android.os.SystemClock
-import android.util.Base64
 import android.view.Surface
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.activity.viewModels
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import com.serenegiant.usb.USBMonitor
 import com.serenegiant.usb.UVCCamera
+import digital.raywel.uvucamera.extensions.observeIn
+import digital.raywel.uvucamera.ui.screen.home.HomeScreen
 import digital.raywel.uvucamera.ui.theme.UVUCameraTheme
+import digital.raywel.uvucamera.util.addTimestampToJpeg
+import digital.raywel.uvucamera.util.nv21ToJpeg
+import digital.raywel.uvucamera.util.saveJpegToCache
+import digital.raywel.uvucamera.util.yuyvToNv21
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
-import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
 class MainActivity : ComponentActivity() {
+    private val viewModel: MainViewModel by viewModels()
 
     private lateinit var usbMonitor: USBMonitor
     private var pendingCapture: CompletableDeferred<String>? = null
@@ -63,15 +43,23 @@ class MainActivity : ComponentActivity() {
         getSystemService(USB_SERVICE) as UsbManager
     }
 
+    private val showDialog = mutableStateOf(false)
+
+    // -----------------------
+    // Activity Lifecycle
+    // -----------------------
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         usbMonitor = USBMonitor(this, usbListener)
 
+        observe()
+
         enableEdgeToEdge()
         setContent {
             UVUCameraTheme {
-                Letmein_UVUCameraApp(this)
+                HomeScreen(viewModel)
             }
         }
     }
@@ -89,6 +77,32 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         usbMonitor.destroy()
         super.onDestroy()
+    }
+
+    private fun observe() {
+        viewModel.captureState.observeIn(this) { state ->
+            when (state) {
+                CaptureState.Idle -> Unit
+                CaptureState.Request -> {
+                    try {
+                        val path = captureUvcFilePath()
+                        delay(1_000L)
+                        viewModel.onCaptureSuccess(path)
+                        Timber.i("onCaptureSuccess $path")
+                    } catch (e: Exception) {
+                        viewModel.onCaptureError(e.message ?: "Unknown error")
+                    }
+                }
+
+                is CaptureState.Success -> {
+                    Timber.i("Captured: ${state.filePath}")
+                }
+
+                is CaptureState.Error -> {
+                    Timber.e("Capture error: ${state.message}")
+                }
+            }
+        }
     }
 
     // -----------------------
@@ -128,7 +142,7 @@ class MainActivity : ComponentActivity() {
             Timber.i("USB Connected: ${device.deviceName}")
 
             pendingCapture?.let { deferred ->
-                captureFromCtrlBlock(ctrlBlock, deferred)
+                captureFromCtrlBlock(ctrlBlock, deferred, 640, 480)
             }
         }
 
@@ -150,7 +164,7 @@ class MainActivity : ComponentActivity() {
     // Public suspend API
     // -----------------------
 
-    suspend fun captureUvcBase64(): String =
+    suspend fun captureUvcFilePath(): String =
         suspendCancellableCoroutine { cont ->
 
             Timber.i("Requested UVC capture")
@@ -185,13 +199,14 @@ class MainActivity : ComponentActivity() {
                 cont.resume("") { cause, _, _ ->
                     Timber.w("Capture cancelled: $cause")
                 }
+                showDialog.value = true
                 return@suspendCancellableCoroutine
             }
 
-            Timber.i("Requesting permission for device: ${devices[0].deviceName}")
+            Timber.i("Requesting permission for device: ${devices[0].productName}")
             usbMonitor.requestPermission(devices[0])
 
-            CoroutineScope(Dispatchers.IO).launch {
+            lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     Timber.i("Waiting for capture result…")
                     val result = deferred.await()
@@ -213,8 +228,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-
-
     // -----------------------
     // Capture Logic
     // -----------------------
@@ -226,30 +239,41 @@ class MainActivity : ComponentActivity() {
         height: Int = 720,
         jpegQuality: Int = 90
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             var camera: UVCCamera? = null
             var surfaceTexture: SurfaceTexture? = null
             var surface: Surface? = null
 
             try {
                 camera = UVCCamera()
-                camera.open(ctrlBlock)   // ✔ ใช้ ctrlBlock จาก USBMonitor
+                camera.open(ctrlBlock)
 
-                val supported = camera.supportedSize  // เป็น String
-                Timber.i("Supported raw string = $supported")
+                Timber.i("Supported raw string = ${camera.supportedSize}")
 
-
-                camera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_MJPEG)
+                camera.setPreviewSize(
+                    width,
+                    height,
+                    UVCCamera.FRAME_FORMAT_YUYV
+                )
 
                 val frameDeferred = CompletableDeferred<ByteArray>()
+                var lab = 0
 
                 camera.setFrameCallback({ frame ->
+                    lab++
+                    Timber.i("Frame Size ${frame.capacity()} with lab $lab")
                     val buffer = frame as ByteBuffer
-                    val jpeg = ByteArray(buffer.remaining())
-                    buffer.get(jpeg)
+                    val yuyv = ByteArray(buffer.remaining())
+                    buffer.get(yuyv)
                     buffer.rewind()
-                    frameDeferred.complete(jpeg)
-                }, UVCCamera.PIXEL_FORMAT_RAW)
+
+                    if (lab == 2) {
+                        if (!frameDeferred.isCompleted) {
+                            frameDeferred.complete(yuyv)
+                        }
+                    }
+
+                }, UVCCamera.FRAME_FORMAT_YUYV)
 
                 // dummy surface
                 surfaceTexture = SurfaceTexture(0).apply {
@@ -260,17 +284,18 @@ class MainActivity : ComponentActivity() {
 
                 camera.startPreview()
 
-                val nv21 = withTimeout(2000) { frameDeferred.await() }
-                val jpeg = nv21ToJpeg(nv21, width, height, jpegQuality)
-                val base64 = Base64.encodeToString(jpeg, Base64.NO_WRAP)
+                val yuyv = withTimeout(2000) { frameDeferred.await() }
 
-                deferred.complete(base64)
+                val nv21 = yuyvToNv21(yuyv, width, height)
+                val jpegRaw = nv21ToJpeg(nv21, width, height, jpegQuality)
 
+                val jpeg = addTimestampToJpeg(jpegRaw)
+                val uriImage = saveJpegToCache(context = this@MainActivity, image = jpeg)
+
+                deferred.complete(uriImage.absolutePath)
             } catch (e: Exception) {
                 Timber.e(e, "Capture failed")
-
                 if (!deferred.isCompleted) deferred.complete("")
-
             } finally {
                 try { camera?.stopPreview() } catch (_: Exception) {}
                 try { camera?.destroy() } catch (_: Exception) {}
@@ -279,117 +304,4 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-
-    // -----------------------
-    // NV21 → JPEG Helper
-    // -----------------------
-
-    private fun nv21ToJpeg(
-        nv21: ByteArray,
-        w: Int,
-        h: Int,
-        q: Int
-    ): ByteArray {
-        val yuv = YuvImage(nv21, ImageFormat.NV21, w, h, null)
-        val out = ByteArrayOutputStream()
-        yuv.compressToJpeg(Rect(0, 0, w, h), q, out)
-        return out.toByteArray()
-    }
-
-}
-@Composable
-fun Letmein_UVUCameraApp(activity: MainActivity) {
-
-    var lastBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var isCapturing by remember { mutableStateOf(false) }
-
-    Scaffold { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-
-            // -------------------------
-            // Preview Image (Top)
-            // -------------------------
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                lastBitmap?.let { bmp ->
-                    Image(
-                        bitmap = bmp.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(260.dp)
-                    )
-                } ?: run {
-                    Text(
-                        "No image captured yet",
-                        modifier = Modifier.padding(top = 16.dp)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // -------------------------
-            // Capture Button (Bottom)
-            // -------------------------
-            Button(
-                onClick = {
-                    if (isCapturing) return@Button
-                    isCapturing = true
-
-                    val startTime = SystemClock.elapsedRealtime()
-
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            val base64 = activity.captureUvcBase64()
-
-                            val elapsed = SystemClock.elapsedRealtime() - startTime
-                            Timber.i("Capture time = $elapsed ms")
-
-                            if (base64.isNotEmpty()) {
-                                val bmp = base64ToBitmap(base64)
-                                withContext(Dispatchers.Main) {
-                                    lastBitmap = bmp
-                                }
-                            }
-
-                        } catch (e: Exception) {
-                            Timber.e(e, "Capture exception")
-                        } finally {
-                            withContext(Dispatchers.Main) { isCapturing = false }
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                enabled = !isCapturing
-            ) {
-                if (isCapturing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(28.dp),
-                        strokeWidth = 3.dp
-                    )
-                } else {
-                    Text("Capture Now")
-                }
-            }
-        }
-    }
-}
-
-fun base64ToBitmap(base64: String): Bitmap {
-    val bytes = Base64.decode(base64, Base64.DEFAULT)
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 }

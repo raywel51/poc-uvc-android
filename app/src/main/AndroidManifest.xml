@@ -17,7 +17,7 @@
         android:theme="@style/Theme.Letmein_UVUCamera">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.activity.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Letmein_UVUCamera">
             <intent-filter>
