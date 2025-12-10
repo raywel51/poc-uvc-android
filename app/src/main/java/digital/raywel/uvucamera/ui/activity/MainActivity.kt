@@ -43,8 +43,6 @@ class MainActivity : ComponentActivity() {
         getSystemService(USB_SERVICE) as UsbManager
     }
 
-    private val showDialog = mutableStateOf(false)
-
     // -----------------------
     // Activity Lifecycle
     // -----------------------
@@ -199,12 +197,11 @@ class MainActivity : ComponentActivity() {
                 cont.resume("") { cause, _, _ ->
                     Timber.w("Capture cancelled: $cause")
                 }
-                showDialog.value = true
                 return@suspendCancellableCoroutine
             }
 
-            Timber.i("Requesting permission for device: ${devices[0].productName}")
-            usbMonitor.requestPermission(devices[0])
+            Timber.i("Requesting permission for device: ${cameraDevice.productName}")
+            usbMonitor.requestPermission(cameraDevice)
 
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
