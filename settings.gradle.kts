@@ -28,5 +28,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "letmein_UVUCamera"
+rootProject.name = "letmein_uvc_camera"
 include(":app")

@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.ui.component
+package digital.raywel.uvccamera.ui.component
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

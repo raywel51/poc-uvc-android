@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.ui.component
+package digital.raywel.uvccamera.ui.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

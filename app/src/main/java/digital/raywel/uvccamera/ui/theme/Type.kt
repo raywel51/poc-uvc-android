@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.ui.theme
+package digital.raywel.uvccamera.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -7,7 +7,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
-import digital.raywel.uvucamera.R
+import digital.raywel.uvc_camera.R
 
 private val interFont = FontFamily(
     Font(

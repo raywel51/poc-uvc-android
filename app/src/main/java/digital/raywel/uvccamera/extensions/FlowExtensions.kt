@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.extensions
+package digital.raywel.uvccamera.extensions
 
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner

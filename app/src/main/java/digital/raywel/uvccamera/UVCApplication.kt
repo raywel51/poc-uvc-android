@@ -1,9 +1,9 @@
-package digital.raywel.uvucamera
+package digital.raywel.uvccamera
 
 import android.app.Application
 import timber.log.Timber
 
-class UVUApplication : Application() {
+class UVCApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 

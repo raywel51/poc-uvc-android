@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.ui.activity
+package digital.raywel.uvccamera.ui.activity
 
 import android.graphics.SurfaceTexture
 import android.hardware.usb.UsbConstants
@@ -10,17 +10,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
 import com.serenegiant.usb.USBMonitor
 import com.serenegiant.usb.UVCCamera
-import digital.raywel.uvucamera.extensions.observeIn
-import digital.raywel.uvucamera.ui.screen.home.HomeScreen
-import digital.raywel.uvucamera.ui.theme.UVUCameraTheme
-import digital.raywel.uvucamera.util.addTimestampToJpeg
-import digital.raywel.uvucamera.util.nv21ToJpeg
-import digital.raywel.uvucamera.util.saveJpegToCache
-import digital.raywel.uvucamera.util.yuyvToNv21
+import digital.raywel.uvccamera.extensions.observeIn
+import digital.raywel.uvccamera.ui.screen.home.HomeScreen
+import digital.raywel.uvccamera.ui.theme.UVUCameraTheme
+import digital.raywel.uvccamera.util.addTimestampToJpeg
+import digital.raywel.uvccamera.util.nv21ToJpeg
+import digital.raywel.uvccamera.util.saveJpegToCache
+import digital.raywel.uvccamera.util.yuyvToNv21
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

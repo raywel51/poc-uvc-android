@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.ui.theme
+package digital.raywel.uvccamera.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

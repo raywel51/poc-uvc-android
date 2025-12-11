@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "digital.raywel.uvucamera"
+    namespace = "digital.raywel.uvc_camera"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "digital.raywel.uvucamera"
+        applicationId = "digital.raywel.uvc_camera"
         minSdk = 27
         targetSdk = 36
         versionCode = 1

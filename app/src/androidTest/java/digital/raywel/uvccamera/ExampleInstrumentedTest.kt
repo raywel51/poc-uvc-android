@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera
+package digital.raywel.uvccamera
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

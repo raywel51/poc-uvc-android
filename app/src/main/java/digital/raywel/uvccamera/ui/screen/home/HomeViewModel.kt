@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.ui.screen.home
+package digital.raywel.uvccamera.ui.screen.home
 
 import androidx.lifecycle.ViewModel
 

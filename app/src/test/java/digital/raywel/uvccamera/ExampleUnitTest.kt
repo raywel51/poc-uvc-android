@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera
+package digital.raywel.uvccamera
 
 import org.junit.Test
 

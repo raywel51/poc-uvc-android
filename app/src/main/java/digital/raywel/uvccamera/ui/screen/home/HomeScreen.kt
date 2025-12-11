@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.ui.screen.home
+package digital.raywel.uvccamera.ui.screen.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,10 +21,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import digital.raywel.uvucamera.ui.activity.CaptureState
-import digital.raywel.uvucamera.ui.activity.MainViewModel
-import digital.raywel.uvucamera.ui.component.CapturedImage
-import digital.raywel.uvucamera.ui.component.CustomDialog
+import digital.raywel.uvccamera.ui.activity.CaptureState
+import digital.raywel.uvccamera.ui.activity.MainViewModel
+import digital.raywel.uvccamera.ui.component.CapturedImage
+import digital.raywel.uvccamera.ui.component.CustomDialog
 import timber.log.Timber
 
 @Composable

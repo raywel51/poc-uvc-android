@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.ui.theme
+package digital.raywel.uvccamera.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

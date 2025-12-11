@@ -1,4 +1,4 @@
-package digital.raywel.uvucamera.ui.activity
+package digital.raywel.uvccamera.ui.activity
 
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
